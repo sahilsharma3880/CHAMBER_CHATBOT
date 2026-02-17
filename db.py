@@ -1,49 +1,35 @@
-import mysql.connector as mysql
+import sqlite3
 import hashlib
 
+
 class MYSQL_Connection:
-    def __init__(self, host, user, password, database):
-        self.config = {
-            "host": host,
-            "user": user,
-            "password": password,
-            "database": database
-        }
+    def __init__(self, database="chatbot_results.db"):
+        self.database = database
+        self.create_db_and_table()
 
     def get_connection(self):
-        return mysql.connect(**self.config)
+        return sqlite3.connect(self.database)
 
     def create_db_and_table(self):
-        conn = mysql.connect(
-            host=self.config["host"],
-            user=self.config["user"],
-            password=self.config["password"]
-        )
-        cursor = conn.cursor()
-        cursor.execute("CREATE DATABASE IF NOT EXISTS chatbot_results")
-        conn.close()
-
-        self.config["database"] = "chatbot_results"
         conn = self.get_connection()
         cursor = conn.cursor()
 
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS user_info (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                username VARCHAR(50) UNIQUE,
-                password VARCHAR(64)
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE,
+                password TEXT
             )
         """)
 
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS chat_info (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                user_id INT,
-                role VARCHAR(20),
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                role TEXT,
                 message TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES user_info(id)
-                ON DELETE CASCADE
             )
         """)
 
@@ -57,15 +43,13 @@ class MYSQL_Connection:
         conn = self.get_connection()
         cursor = conn.cursor()
         try:
-            query = """
-                INSERT INTO user_info (username, password)
-                VALUES (%s, %s)
-            """
-            cursor.execute(query, (username, self.hash_password(password)))
+            cursor.execute(
+                "INSERT INTO user_info (username, password) VALUES (?, ?)",
+                (username, self.hash_password(password))
+            )
             conn.commit()
             return True
-        except Exception as e:
-            print(e)
+        except:
             return False
         finally:
             conn.close()
@@ -73,49 +57,43 @@ class MYSQL_Connection:
     def login_user(self, username, password):
         conn = self.get_connection()
         cursor = conn.cursor()
-        query = """
-            SELECT id FROM user_info
-            WHERE username = %s AND password = %s
-        """
-        cursor.execute(query, (username, self.hash_password(password)))
+        cursor.execute(
+            "SELECT id FROM user_info WHERE username = ? AND password = ?",
+            (username, self.hash_password(password))
+        )
         result = cursor.fetchone()
         conn.close()
         return result
-    
-    def reset_password (self , username , new_password):
+
+    def reset_password(self, username, new_password):
         conn = self.get_connection()
         cursor = conn.cursor()
-
-        query = "UPDATE user_info SET password = %s WHERE username = %s"
-        cursor.execute(query,(self.hash_password(new_password),username))
+        cursor.execute(
+            "UPDATE user_info SET password = ? WHERE username = ?",
+            (self.hash_password(new_password), username)
+        )
         conn.commit()
-
         updated = cursor.rowcount
         conn.close()
-        return updated>0
+        return updated > 0
 
     def insert_message(self, user_id, role, message):
         conn = self.get_connection()
         cursor = conn.cursor()
-        query = """
-            INSERT INTO chat_info (user_id, role, message)
-            VALUES (%s, %s, %s)
-        """
-        cursor.execute(query, (user_id, role, message))
+        cursor.execute(
+            "INSERT INTO chat_info (user_id, role, message) VALUES (?, ?, ?)",
+            (user_id, role, message)
+        )
         conn.commit()
         conn.close()
 
     def fetch_history(self, user_id, limit=20):
         conn = self.get_connection()
         cursor = conn.cursor()
-        query = """
-            SELECT role, message
-            FROM chat_info
-            WHERE user_id = %s
-            ORDER BY id DESC
-            LIMIT %s
-        """
-        cursor.execute(query, (user_id, limit))
+        cursor.execute(
+            "SELECT role, message FROM chat_info WHERE user_id = ? ORDER BY id DESC LIMIT ?",
+            (user_id, limit)
+        )
         data = cursor.fetchall()
         conn.close()
         return data
@@ -124,7 +102,7 @@ class MYSQL_Connection:
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "DELETE FROM chat_info WHERE user_id = %s",
+            "DELETE FROM chat_info WHERE user_id = ?",
             (user_id,)
         )
         conn.commit()
