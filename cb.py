@@ -9,7 +9,7 @@ db = MYSQL_Connection()
 
 # Page Config
 st.set_page_config(
-    page_title="CHATBOT",
+    page_title="CHAMBER",
     page_icon="🤖",
     layout="centered"
 )
@@ -123,3 +123,4 @@ if user_input:
 
     st.session_state.chat.append(AIMessage(content=response.content))
     db.insert_message(st.session_state.user_id, "assistant", response.content)
+
