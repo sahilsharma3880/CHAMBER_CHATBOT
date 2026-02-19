@@ -3,6 +3,9 @@ import os
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from db import MYSQL_Connection
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Initialize DB (SQLite)
 db = MYSQL_Connection()
@@ -123,4 +126,5 @@ if user_input:
 
     st.session_state.chat.append(AIMessage(content=response.content))
     db.insert_message(st.session_state.user_id, "assistant", response.content)
+
 
